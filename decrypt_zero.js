@@ -1,0 +1,20 @@
+const crypto = require('crypto');
+const fs = require('fs');
+const zlib = require('zlib');
+const data = fs.readFileSync('H:/Luna NextGen/Data/System/ItemList.bin');
+const key = Buffer.alloc(32);
+const off = 13;
+const payloadLen = 16 * Math.floor((data.length - off - 1) / 16);
+const payload = data.subarray(off, off + payloadLen);
+const d = crypto.createDecipheriv('aes-256-ecb', key, null);
+d.setAutoPadding(false);
+const pt = Buffer.concat([d.update(payload), d.final()]);
+const isPrint = b => (b >= 0x20 && b < 0x7f) || b === 9 || b === 10 || b === 13 || b === 0;
+const printable = pt.filter(isPrint).length / pt.length;
+console.log('print%', (printable * 100).toFixed(1));
+console.log('head:', JSON.stringify(pt.subarray(0, 300).toString('latin1')));
+fs.writeFileSync('H:/Luna NextGen/Data/System/ItemList_dec.bin', pt);
+// check crc
+let sum = 0;
+for (const b of pt.subarray(0, 2594142)) sum = (sum + b) & 0xff;
+console.log('crc sum:', sum.toString(16), 'expected 49');
